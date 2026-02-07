@@ -1,133 +1,134 @@
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
+"""Lightweight keyword-based job matching (no ML dependencies)"""
 from typing import List, Dict, Tuple
 from app.models import UserProfile, Job
 
 
-class SemanticMatcher:
-    """Semantic job matching using sentence transformers"""
+class KeywordMatcher:
+    """Simple keyword-based job matching for lightweight deployment"""
     
-    def __init__(self, model_name: str = 'all-MiniLM-L6-v2'):
-        """Initialize the semantic matching model"""
-        print(f"Loading semantic model: {model_name}...")
-        self.model = SentenceTransformer(model_name)
-        print("Model loaded successfully!")
+    def __init__(self):
+        print("Initializing KeywordMatcher (lightweight mode)...")
+        print("Matcher ready!")
     
-    def create_user_embedding(self, profile: UserProfile) -> np.ndarray:
-        """Create embedding from user profile"""
-        # Combine all user information into a rich text representation
-        user_text = f"""
-        Professional Profile:
-        Skills: {', '.join(profile.skills)}
-        Experience Level: {profile.experience_level} with {profile.experience_years} years
-        Preferred Roles: {', '.join(profile.preferred_roles)}
-        Career Goals: {profile.career_goals}
-        """
+    def create_user_embedding(self, profile: UserProfile) -> List[str]:
+        """Create a 'pseudo-embedding' (just a list of keywords from profile)"""
+        keywords = set()
         
-        if profile.resume_text:
-            user_text += f"\nResume: {profile.resume_text}"
+        # Add skills (lowercase for comparison)
+        for skill in profile.skills:
+            keywords.add(skill.lower().strip())
         
-        embedding = self.model.encode(user_text, convert_to_tensor=False)
-        return embedding
+        # Add preferred roles
+        for role in profile.preferred_roles:
+            for word in role.lower().split():
+                if len(word) > 2:  # Skip small words
+                    keywords.add(word)
+        
+        # Add experience level
+        keywords.add(profile.experience_level.lower())
+        
+        return list(keywords)
     
-    def create_job_embedding(self, job: Job) -> np.ndarray:
-        """Create embedding from job listing"""
-        job_text = f"""
-        Job Title: {job.title}
-        Company: {job.company}
-        Description: {job.description}
-        Requirements: {', '.join(job.requirements)}
-        Experience Required: {job.experience_required}
-        Location: {job.location}
-        """
+    def create_job_embedding(self, job: Job) -> List[str]:
+        """Create a 'pseudo-embedding' (just a list of keywords from job)"""
+        keywords = set()
         
-        embedding = self.model.encode(job_text, convert_to_tensor=False)
-        return embedding
+        # Handle new Internshala-style fields
+        title = job.JobTitles or job.title or ""
+        company = job.Company_Name or job.company or ""
+        skills_str = job.Skills or ""
+        requirements = job.requirements or []
+        
+        # Add job title words
+        for word in title.lower().split():
+            if len(word) > 2:
+                keywords.add(word)
+        
+        # Add skills from Skills field (comma separated)
+        if skills_str:
+            for skill in skills_str.split(','):
+                keywords.add(skill.lower().strip())
+        
+        # Add requirements
+        for req in requirements:
+            keywords.add(req.lower().strip())
+        
+        return list(keywords)
     
-    def calculate_similarity(self, user_embedding: np.ndarray, job_embedding: np.ndarray) -> float:
-        """Calculate cosine similarity between user and job"""
-        # Reshape for sklearn
-        user_emb = user_embedding.reshape(1, -1)
-        job_emb = job_embedding.reshape(1, -1)
+    def calculate_similarity(self, user_keywords: List[str], job_keywords: List[str]) -> float:
+        """Calculate Jaccard-like similarity between keyword sets"""
+        if not user_keywords or not job_keywords:
+            return 50.0  # Default score
         
-        similarity = cosine_similarity(user_emb, job_emb)[0][0]
-        # Convert to 0-100 scale
-        return float(similarity * 100)
+        user_set = set(user_keywords)
+        job_set = set(job_keywords)
+        
+        # Find intersection
+        matches = user_set.intersection(job_set)
+        
+        # Use Jaccard-like formula but weighted towards matches
+        if len(job_set) == 0:
+            return 50.0
+        
+        # Score based on how many job requirements are matched
+        match_ratio = len(matches) / len(job_set)
+        
+        # Convert to 0-100 scale with some baseline
+        score = 40 + (match_ratio * 60)  # Range: 40-100
+        
+        return min(100.0, score)
     
-    def rank_jobs(self, profile: UserProfile, jobs: List[Job], job_embeddings: Dict[str, np.ndarray] = None) -> List[Tuple[Job, float]]:
-        """Rank jobs by semantic similarity to user profile
-        
-        Args:
-            profile: User profile
-            jobs: List of jobs to rank
-            job_embeddings: Optional dictionary of pre-computed job embeddings {job_id: embedding}
-        """
-        user_embedding = self.create_user_embedding(profile)
+    def rank_jobs(self, profile: UserProfile, jobs: List[Job], job_embeddings: Dict[str, List[str]] = None) -> List[Tuple[Job, float]]:
+        """Rank jobs by keyword similarity to user profile"""
+        user_keywords = self.create_user_embedding(profile)
         
         job_scores = []
         
-        if job_embeddings:
-            # Efficient vectorized calculation
-            # Create lists ensuring order matches
-            valid_jobs = []
-            valid_embeddings = []
+        for job in jobs:
+            job_id = job.job_id or job.Links or f"job_{id(job)}"
             
-            for job in jobs:
-                if job.job_id in job_embeddings:
-                    valid_jobs.append(job)
-                    valid_embeddings.append(job_embeddings[job.job_id])
+            if job_embeddings and job_id in job_embeddings:
+                job_keywords = job_embeddings[job_id]
+            else:
+                job_keywords = self.create_job_embedding(job)
             
-            if not valid_jobs:
-                return []
-                
-            # Stack embeddings into a matrix (N, D)
-            job_matrix = np.vstack(valid_embeddings)
-            user_vector = user_embedding.reshape(1, -1)
-            
-            # Calculate cosine similarity (1, N)
-            similarities = cosine_similarity(user_vector, job_matrix)[0]
-            
-            # Convert to 0-100 scale and zip with jobs
-            for i, job in enumerate(valid_jobs):
-                score = float(similarities[i] * 100)
-                job_scores.append((job, score))
-                
-        else:
-            # Fallback to slower iterative approach
-            for job in jobs:
-                job_embedding = self.create_job_embedding(job)
-                similarity_score = self.calculate_similarity(user_embedding, job_embedding)
-                job_scores.append((job, similarity_score))
+            score = self.calculate_similarity(user_keywords, job_keywords)
+            job_scores.append((job, score))
         
         # Sort by score descending
         job_scores.sort(key=lambda x: x[1], reverse=True)
         return job_scores
     
-    def get_skill_embedding(self, skill: str) -> np.ndarray:
-        """Get embedding for a single skill"""
-        return self.model.encode(skill, convert_to_tensor=False)
-    
     def find_similar_skills(self, skill: str, skill_pool: List[str], top_k: int = 3) -> List[str]:
-        """Find similar skills to help with gap analysis"""
-        skill_emb = self.get_skill_embedding(skill)
+        """Find similar skills using simple string matching"""
+        skill_lower = skill.lower()
         
-        similarities = []
+        # Simple matching: skills that contain the same words
+        matches = []
         for pool_skill in skill_pool:
-            pool_emb = self.get_skill_embedding(pool_skill)
-            sim = cosine_similarity(skill_emb.reshape(1, -1), pool_emb.reshape(1, -1))[0][0]
-            similarities.append((pool_skill, sim))
+            pool_lower = pool_skill.lower()
+            
+            # Check for substring match or word overlap
+            if skill_lower in pool_lower or pool_lower in skill_lower:
+                matches.append((pool_skill, 0.8))
+            else:
+                # Word overlap
+                skill_words = set(skill_lower.split())
+                pool_words = set(pool_lower.split())
+                overlap = len(skill_words.intersection(pool_words))
+                if overlap > 0:
+                    matches.append((pool_skill, overlap * 0.3))
         
-        similarities.sort(key=lambda x: x[1], reverse=True)
-        return [s[0] for s in similarities[:top_k]]
+        matches.sort(key=lambda x: x[1], reverse=True)
+        return [m[0] for m in matches[:top_k]]
 
 
 # Global instance
 _matcher_instance = None
 
-def get_matcher() -> SemanticMatcher:
+def get_matcher() -> KeywordMatcher:
     """Get or create the global matcher instance"""
     global _matcher_instance
     if _matcher_instance is None:
-        _matcher_instance = SemanticMatcher()
+        _matcher_instance = KeywordMatcher()
     return _matcher_instance
