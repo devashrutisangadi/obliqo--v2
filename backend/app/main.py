@@ -44,7 +44,7 @@ async def load_jobs():
     """Load jobs from dataset on startup"""
     global jobs_database, job_embeddings_cache
     
-    data_path = Path(__file__).parent.parent / "data" / "jobs_dataset.json"
+    data_path = Path(__file__).parent.parent / "data" / "jobData.json"
     
     # Initialize the semantic matcher (loads the model)
     matcher = get_matcher()

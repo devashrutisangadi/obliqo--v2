@@ -74,7 +74,6 @@ export default function UserProfileForm() {
         experience_years: 0,
         experience_level: 'Entry',
         preferred_roles: [],
-        preferred_locations: [],
         career_goals: '',
         projects: [],
         work_experience: [],
@@ -101,7 +100,7 @@ export default function UserProfileForm() {
     // Helper states for comma-separated inputs
     const [skillsInput, setSkillsInput] = useState('');
     const [rolesInput, setRolesInput] = useState('');
-    const [locationsInput, setLocationsInput] = useState('');
+
 
     // CV upload states
     const [cvUploading, setCvUploading] = useState(false);
@@ -127,7 +126,7 @@ export default function UserProfileForm() {
                 setProfile(mergedProfile);
                 setSkillsInput((data.skills || []).join(', '));
                 setRolesInput((data.preferred_roles || []).join(', '));
-                setLocationsInput((data.preferred_locations || []).join(', '));
+
             })
             .catch(() => {
                 // No profile exists
@@ -188,7 +187,7 @@ export default function UserProfileForm() {
                 ...profile,
                 skills: skillsInput.split(',').map(s => s.trim()).filter(Boolean),
                 preferred_roles: rolesInput.split(',').map(s => s.trim()).filter(Boolean),
-                preferred_locations: locationsInput.split(',').map(s => s.trim()).filter(Boolean),
+
             };
 
             await api.saveProfile(finalProfile);
@@ -436,10 +435,6 @@ export default function UserProfileForm() {
                                 <div className="md:col-span-2">
                                     <label className="block text-sm text-gray-400 mb-1">Preferred Roles (comma separated)</label>
                                     <input className="input-field" placeholder="Frontend Developer, Backend Engineer..." value={rolesInput} onChange={e => setRolesInput(e.target.value)} required />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm text-gray-400 mb-1">Preferred Locations (comma separated)</label>
-                                    <input className="input-field" placeholder="New York, London, Remote..." value={locationsInput} onChange={e => setLocationsInput(e.target.value)} required />
                                 </div>
                             </div>
                         </section>

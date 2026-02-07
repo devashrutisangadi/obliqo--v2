@@ -130,7 +130,6 @@ export interface UserProfile {
     experience_years: number;
     experience_level: string;
     preferred_roles: string[];
-    preferred_locations: string[];
     career_goals: string;
 
     // Projects
@@ -156,16 +155,25 @@ export interface UserProfile {
 }
 
 export interface Job {
-    job_id: string;
-    title: string;
-    company: string;
-    description: string;
-    requirements: string[];
-    location: string;
-    experience_required: string;
-    posted_date: string;
+    // New Internshala-style fields
+    Company_Name?: string;
+    JobTitles?: string;
+    Skills?: string;  // Comma-separated string
+    Description?: string;
+    Stipend?: string;
+    Links?: string;
+
+    // Legacy fields for backward compatibility
+    job_id?: string;
+    title?: string;
+    company?: string;
+    description?: string;
+    requirements?: string[];
+    location?: string;
+    experience_required?: string;
+    posted_date?: string;
     company_size?: string;
-    is_remote: boolean;
+    is_remote?: boolean;
 }
 
 export interface SkillGap {

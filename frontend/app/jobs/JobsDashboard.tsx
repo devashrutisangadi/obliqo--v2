@@ -2,12 +2,24 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { api, JobMatch, StatsResponse } from '@/lib/api';
+import { api, JobMatch, StatsResponse, Job } from '@/lib/api';
 import JobCard from '@/components/JobCard';
 import FitScore from '@/components/FitScore';
 import ExplainabilityPanel from '@/components/ExplainabilityPanel';
 import SkillGap from '@/components/SkillGap';
 import DecisionBadge from '@/components/DecisionBadge';
+
+// Helper functions to normalize job field access
+const getJobTitle = (job: Job): string => job.JobTitles || job.title || 'Untitled Position';
+const getCompanyName = (job: Job): string => job.Company_Name || job.company || 'Unknown Company';
+const getDescription = (job: Job): string => job.Description || job.description || '';
+const getJobId = (job: Job): string => job.job_id || job.Links || `job_${Date.now()}`;
+const getSkills = (job: Job): string[] => {
+    if (job.Skills) return job.Skills.split(',').map(s => s.trim()).filter(s => s);
+    return job.requirements || [];
+};
+const getStipend = (job: Job): string | null => job.Stipend || null;
+const getJobLink = (job: Job): string | null => job.Links || null;
 
 export default function JobsDashboard() {
     const [jobs, setJobs] = useState<JobMatch[]>([]);
@@ -189,7 +201,7 @@ export default function JobsDashboard() {
                     ) : (
                         jobs.map((jobMatch) => (
                             <JobCard
-                                key={jobMatch.job.job_id}
+                                key={getJobId(jobMatch.job)}
                                 jobMatch={jobMatch}
                                 onClick={handleJobClick}
                             />
@@ -204,18 +216,18 @@ export default function JobsDashboard() {
                         <div className="glass-card p-6">
                             <div className="flex justify-between items-start mb-4">
                                 <div>
-                                    <h2 className="text-3xl font-bold text-white mb-2">{selectedJob.job.title}</h2>
+                                    <h2 className="text-3xl font-bold text-white mb-2">{getJobTitle(selectedJob.job)}</h2>
                                     <div className="flex items-center gap-2 text-gray-300 mb-2">
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                         </svg>
-                                        <span className="font-semibold text-lg">{selectedJob.job.company}</span>
+                                        <span className="font-semibold text-lg">{getCompanyName(selectedJob.job)}</span>
                                     </div>
                                     <div className="flex flex-wrap gap-4 text-sm text-gray-400">
-                                        <span>📍 {selectedJob.job.location}</span>
                                         {selectedJob.job.is_remote && <span>🌐 Remote</span>}
-                                        <span>📊 {selectedJob.job.experience_required}</span>
+                                        {selectedJob.job.experience_required && <span>📊 {selectedJob.job.experience_required}</span>}
                                         {selectedJob.job.company_size && <span>👥 {selectedJob.job.company_size}</span>}
+                                        {getStipend(selectedJob.job) && <span className="text-green-400 font-semibold">💰 {getStipend(selectedJob.job)}</span>}
                                     </div>
                                 </div>
                                 <FitScore score={selectedJob.fit_score} size="medium" />
@@ -224,9 +236,21 @@ export default function JobsDashboard() {
                             <DecisionBadge decision={selectedJob.decision} className="mb-4" />
                             <p className="text-gray-200 mb-4">{selectedJob.decision_reason}</p>
 
-                            {/* Apply Now button - only show for Apply or Wait decisions */}
-                            {(selectedJob.decision === 'Apply' || selectedJob.decision === 'Wait') && (
-                                <button className="w-full btn-primary mb-6 py-3 text-lg font-semibold flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg transition-all transform hover:scale-[1.02]">
+                            {/* Apply Now button - redirects to original job posting */}
+                            {getJobLink(selectedJob.job) ? (
+                                <a
+                                    href={getJobLink(selectedJob.job)!}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full btn-primary mb-6 py-3 text-lg font-semibold flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg transition-all transform hover:scale-[1.02] no-underline text-white"
+                                >
+                                    🚀 Apply Now
+                                </a>
+                            ) : (
+                                <button
+                                    className="w-full btn-primary mb-6 py-3 text-lg font-semibold flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg transition-all transform hover:scale-[1.02]"
+                                    onClick={() => alert('Application link coming soon!')}
+                                >
                                     🚀 Apply Now
                                 </button>
                             )}
@@ -248,14 +272,14 @@ export default function JobsDashboard() {
 
                             <div>
                                 <h3 className="text-lg font-semibold text-white mb-2">Job Description</h3>
-                                <p className="text-gray-300 text-sm">{selectedJob.job.description}</p>
+                                <p className="text-gray-300 text-sm whitespace-pre-wrap">{getDescription(selectedJob.job)}</p>
                             </div>
 
                             <div className="mt-4">
-                                <h3 className="text-lg font-semibold text-white mb-2">Requirements</h3>
+                                <h3 className="text-lg font-semibold text-white mb-2">Skills Required</h3>
                                 <div className="flex flex-wrap gap-2">
-                                    {selectedJob.job.requirements.map((req, idx) => (
-                                        <span key={idx} className="skill-badge">{req}</span>
+                                    {getSkills(selectedJob.job).map((skill, idx) => (
+                                        <span key={idx} className="skill-badge">{skill}</span>
                                     ))}
                                 </div>
                             </div>

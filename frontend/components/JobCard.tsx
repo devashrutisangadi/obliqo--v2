@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { JobMatch } from '@/lib/api';
+import { JobMatch, Job } from '@/lib/api';
 import FitScore from './FitScore';
 import DecisionBadge from './DecisionBadge';
 
@@ -10,12 +10,23 @@ interface JobCardProps {
     onClick?: (jobId: string) => void;
 }
 
+// Helper functions to normalize job field access
+const getJobTitle = (job: Job): string => job.JobTitles || job.title || 'Untitled Position';
+const getCompanyName = (job: Job): string => job.Company_Name || job.company || 'Unknown Company';
+const getJobId = (job: Job): string => job.job_id || job.Links || `job_${Date.now()}`;
+const getSkills = (job: Job): string[] => {
+    if (job.Skills) return job.Skills.split(',').map(s => s.trim()).filter(s => s);
+    return job.requirements || [];
+};
+const getStipend = (job: Job): string | null => job.Stipend || null;
+const getJobLink = (job: Job): string | null => job.Links || null;
+
 const JobCard: React.FC<JobCardProps> = ({ jobMatch, onClick }) => {
     const { job, fit_score, decision, decision_reason, explanation, competition_level, career_impact } = jobMatch;
 
     const handleClick = () => {
         if (onClick) {
-            onClick(job.job_id);
+            onClick(getJobId(job));
         }
     };
 
@@ -43,6 +54,9 @@ const JobCard: React.FC<JobCardProps> = ({ jobMatch, onClick }) => {
         }
     };
 
+    const skills = getSkills(job);
+    const stipend = getStipend(job);
+
     return (
         <div
             className="glass-card p-6 hover:scale-[1.02] transition-all duration-300 cursor-pointer animate-slide-up"
@@ -51,23 +65,23 @@ const JobCard: React.FC<JobCardProps> = ({ jobMatch, onClick }) => {
             {/* Header */}
             <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
-                    <h3 className="text-xl font-bold text-white mb-2">{job.title}</h3>
+                    <h3 className="text-xl font-bold text-white mb-2">{getJobTitle(job)}</h3>
                     <div className="flex items-center gap-2 text-gray-300">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                         </svg>
-                        <span className="font-medium">{job.company}</span>
+                        <span className="font-medium">{getCompanyName(job)}</span>
                     </div>
                     <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
-                        <div className="flex items-center gap-1">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <span>{job.location} {job.is_remote && '• Remote'}</span>
-                        </div>
-                        <span>•</span>
-                        <span>{job.experience_required}</span>
+                        {job.experience_required && (
+                            <span>{job.experience_required}</span>
+                        )}
+                        {stipend && (
+                            <>
+                                {job.experience_required && <span>•</span>}
+                                <span className="text-green-400 font-medium">{stipend}</span>
+                            </>
+                        )}
                     </div>
                 </div>
                 <FitScore score={fit_score} size="small" />
@@ -113,3 +127,4 @@ const JobCard: React.FC<JobCardProps> = ({ jobMatch, onClick }) => {
 };
 
 export default JobCard;
+

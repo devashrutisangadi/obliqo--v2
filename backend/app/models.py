@@ -119,17 +119,49 @@ class UserProfile(BaseModel):
 
 
 class Job(BaseModel):
-    """Job listing model"""
-    job_id: str
-    title: str
-    company: str
-    description: str
-    requirements: List[str]
-    location: str
-    experience_required: str
-    posted_date: str
+    """Job listing model - supports new Internshala-style format"""
+    # New format fields
+    Company_Name: Optional[str] = None
+    JobTitles: Optional[str] = None
+    Skills: Optional[str] = None  # Comma-separated string
+    Description: Optional[str] = None
+    Stipend: Optional[str] = None
+    Links: Optional[str] = None
+    
+    # Legacy fields for backward compatibility
+    job_id: Optional[str] = None
+    title: Optional[str] = None
+    company: Optional[str] = None
+    description: Optional[str] = None
+    requirements: Optional[List[str]] = None
+    location: Optional[str] = None
+    experience_required: Optional[str] = None
+    posted_date: Optional[str] = None
     company_size: Optional[str] = None
     is_remote: bool = False
+    
+    # Helper properties to normalize field access
+    @property
+    def normalized_title(self) -> str:
+        return self.JobTitles or self.title or "Untitled Position"
+    
+    @property
+    def normalized_company(self) -> str:
+        return self.Company_Name or self.company or "Unknown Company"
+    
+    @property
+    def normalized_description(self) -> str:
+        return self.Description or self.description or ""
+    
+    @property
+    def normalized_skills(self) -> List[str]:
+        if self.Skills:
+            return [s.strip() for s in self.Skills.split(',') if s.strip()]
+        return self.requirements or []
+    
+    @property
+    def normalized_link(self) -> Optional[str]:
+        return self.Links
 
 
 class SkillGap(BaseModel):
