@@ -236,23 +236,25 @@ export default function JobsDashboard() {
                             <DecisionBadge decision={selectedJob.decision} className="mb-4" />
                             <p className="text-gray-200 mb-4">{selectedJob.decision_reason}</p>
 
-                            {/* Apply Now button - redirects to original job posting */}
-                            {getJobLink(selectedJob.job) ? (
-                                <a
-                                    href={getJobLink(selectedJob.job)!}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="w-full btn-primary mb-6 py-3 text-lg font-semibold flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg transition-all transform hover:scale-[1.02] no-underline text-white"
-                                >
-                                    🚀 Apply Now
-                                </a>
-                            ) : (
-                                <button
-                                    className="w-full btn-primary mb-6 py-3 text-lg font-semibold flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg transition-all transform hover:scale-[1.02]"
-                                    onClick={() => alert('Application link coming soon!')}
-                                >
-                                    🚀 Apply Now
-                                </button>
+                            {/* Apply Now button - only shown for 'Apply' decision jobs */}
+                            {selectedJob.decision !== 'Skip' && selectedJob.decision !== 'Avoid' && (
+                                getJobLink(selectedJob.job) ? (
+                                    <a
+                                        href={getJobLink(selectedJob.job)!}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="w-full btn-primary mb-6 py-3 text-lg font-semibold flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg transition-all transform hover:scale-[1.02] no-underline text-white"
+                                    >
+                                        🚀 Apply Now
+                                    </a>
+                                ) : (
+                                    <button
+                                        className="w-full btn-primary mb-6 py-3 text-lg font-semibold flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-lg transition-all transform hover:scale-[1.02]"
+                                        onClick={() => alert('Application link coming soon!')}
+                                    >
+                                        🚀 Apply Now
+                                    </button>
+                                )
                             )}
 
                             <div className="flex gap-4 mb-6">
