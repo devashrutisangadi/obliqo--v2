@@ -130,6 +130,7 @@ export interface UserProfile {
     experience_years: number;
     experience_level: string;
     preferred_roles: string[];
+    preferred_locations: string[];
     career_goals: string;
 
     // Projects
